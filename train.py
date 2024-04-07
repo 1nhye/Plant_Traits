@@ -30,7 +30,18 @@ if __name__ == '__main__':
     os.makedirs('./save', exist_ok=True)
     os.makedirs(f'./save/{args.model}_{args.epoch}_{args.batch}_{args.learning_rate}', exist_ok=True)
     
-    transforms = T.Compose([...])
+    img_size = 256
+    crop_size = 224
+    max_rotation = 30
+    transforms = T.Compose(
+        [T.Resize(img_size),
+         T.RandomHorizontalFlip(),
+         T.RandomRotation(max_rotation),
+         T.RandomResizedCrop(crop_size, scale=(0.5, 1.0)),
+         T.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+         T.ToTensor(),
+         T.RandomErasing(),
+         ])
 
     dataset = PlantDataset("./dataset", "train/", transforms=transforms)
     num_train = len(dataset)
@@ -79,8 +90,10 @@ if __name__ == '__main__':
 
         for batch, tensor in enumerate(tqdm(train_loader)):
             images = tensor['image'].to(device)
-            infos = tensor['info'].to(device)
-            labels = tensor['label'].to(device)
+            infos = torch.stack(tensor['info'], dim = 1)
+            infos = infos.to(device).float()
+            labels = torch.stack(tensor['label'], dim = 1)
+            labels = labels.to(device).float()
             
             pred = model(images, infos)
             loss = criterion(pred, labels)
@@ -100,8 +113,10 @@ if __name__ == '__main__':
         with torch.no_grad():
             for batch, tensor in enumerate(tqdm(val_loader)):
                 images = tensor['image'].to(device)
-                infos = tensor['info'].to(device)
-                labels = tensor['label'].to(device)
+                infos = torch.stack(tensor['info'], dim = 1)
+                infos = infos.to(device).float()
+                labels = torch.stack(tensor['label'], dim = 1)
+                labels = labels.to(device).float()
                 total += len(images)
 
                 outputs = model(images, infos)
